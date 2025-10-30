@@ -21,7 +21,11 @@
       </ul>
     </nav>
     <MessageInput v-if="show === 'ori'" />
-    <CustomMarkdownEditor v-if="show === 'demo'" :value="payload" />
+    <div class="editor-wrapper" v-if="show === 'demo'">
+      <!-- copy button  -->
+      <button @click="copyToClipboard">Copy</button>
+      <CustomMarkdownEditor :key="editorKey" ref="editorRef" :value="currentPayload" @paste="handlePaste" />
+    </div>
   </div>
 </template>
 
@@ -31,6 +35,8 @@ import MessageInput from "./components/MessageInput.vue";
 import CustomMarkdownEditor from "./components/CustomMarkdownEditor.vue";
 
 const show = ref("ori");
+const editorRef = ref(null);
+const editorKey = ref(0);
 
 const payload = `# 角色：{#InputSlot placeholder="角色名称" mode="input"#}{#/InputSlot#}
 {#InputSlot placeholder="角色概述和主要职责的一句话描述" mode="input"#}{#/InputSlot#}
@@ -55,6 +61,20 @@ const payload = `# 角色：{#InputSlot placeholder="角色名称" mode="input"#
 - {#InputSlot placeholder="描述角色在互动过程中需要遵循的限制条件1" mode="input"#}{#/InputSlot#}
 - {#InputSlot placeholder="描述角色在互动过程中需要遵循的限制条件2" mode="input"#}{#/InputSlot#}
 - {#InputSlot placeholder="描述角色在互动过程中需要遵循的限制条件3" mode="input"#}{#/InputSlot#}`;
+
+const currentPayload = ref(payload);
+
+const copyToClipboard = () => {
+  navigator.clipboard.writeText(payload).then(() => {
+    alert("Copied to clipboard!");
+  });
+};
+
+const handlePaste = (pastedContent) => {
+  // Replace the current payload with the pasted content and force re-render
+  currentPayload.value = pastedContent;
+  editorKey.value++;
+};
 </script>
 
 <style>
