@@ -1,0 +1,4 @@
+
+    // this.supportedRegex = /\u200B<span class="input-slot[^>]*>(.*?)<\/span>/g;
+    // this.supportedRegex = /\u200B<span class="input-slot[^>]*data-placeholder="(.*?)"[^>]*>(.*?)<\/span>\u200B/g;
+  

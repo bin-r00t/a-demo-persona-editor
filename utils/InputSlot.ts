@@ -1,5 +1,15 @@
 export class InputSlot {
-  constructor(id, value, mode, placeholder = "Type here...") {
+  id: string;
+  value: string;
+  mode: "singleline" | "textarea";
+  placeholder: string;
+
+  constructor(
+    id: string,
+    value: string,
+    mode: "singleline" | "textarea",
+    placeholder: string = "Type here...",
+  ) {
     this.id = id;
     this.value = value;
     this.mode = mode;
