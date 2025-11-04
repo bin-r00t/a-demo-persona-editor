@@ -1,94 +1,216 @@
 <template>
-  <div
-    class="demo-container"
-    contenteditable="true"
-    ref="editorRef"
-    @input="handleInput"
-    @keydown="handleKeydown"
-    @paste="handlePaste"
-    v-html="renderedContent"
-  ></div>
+  <div class="demo-container" ref="editorRef">
+    <div class="editor-content" ref="contentRef" @input="handleInput" @paste="handlePaste" @keydown="handleKeydown"></div>
+  </div>
 </template>
 
 <script setup>
-import { ref, computed, watch } from "vue";
+import { ref, watch, onMounted } from "vue";
 
 const props = defineProps({
   value: {
     type: String,
-    default: "This is a demo component",
+    default: "",
   },
 });
 
 const emit = defineEmits(["paste", "update"]);
 
+// Refs
 const editorRef = ref(null);
-const renderedContent = computed(() => cm_render(props.value));
+const contentRef = ref(null);
 
-// Watch for value changes and update the editor
+// Parsed model - will store the structure of the document
+const parsedModel = ref([]);
+
+// Function to parse markdown with InputSlot syntax into parsedModel format
+function parseToModel(markdown) {
+  const model = [];
+  const inputSlotRegex = /\{#InputSlot\s+([^#]*?)#\}\{#\/InputSlot\}/g;
+
+  let lastIndex = 0;
+  let match;
+
+  while ((match = inputSlotRegex.exec(markdown)) !== null) {
+    // Add text before the input slot
+    const textBefore = markdown.slice(lastIndex, match.index);
+    if (textBefore) {
+      model.push(textBefore);
+    }
+
+    // Parse attributes
+    const attributes = match[1];
+    const attrs = {};
+    const attrRegex = /(\w+)="([^"]*)"/g;
+    let attrMatch;
+
+    while ((attrMatch = attrRegex.exec(attributes)) !== null) {
+      attrs[attrMatch[1]] = attrMatch[2];
+    }
+
+    const placeholder = attrs.placeholder || "Enter text here...";
+    const mode = attrs.mode || "input";
+    const value = attrs.value || "";
+
+    // Add input slot to model
+    model.push({
+      type: "input",
+      placeholder,
+      mode,
+      value
+    });
+
+    lastIndex = match.index + match[0].length;
+  }
+
+  // Add remaining text after last input slot
+  const remainingText = markdown.slice(lastIndex);
+  if (remainingText) {
+    model.push(remainingText);
+  }
+
+  return model;
+}
+
+// Initial render function
+function renderInitial() {
+  let html = "";
+  let inputIndex = 0;
+
+  for (const item of parsedModel.value) {
+    if (typeof item === "string") {
+      // Process markdown in text
+      let processed = item.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+      const lines = processed.split("\n");
+
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        if (line.match(/^##\s+/)) {
+          html += line.replace(/^##\s+(.+)$/, '<span class="header-two">## $1</span>') + "<br>";
+        } else if (line.match(/^#\s+/) && !line.match(/^##/)) {
+          html += line.replace(/^#\s+(.+)$/, '<span class="header-one"># $1</span>') + "<br>";
+        } else if (line) {
+          html += line + "<br>";
+        }
+        if (i < lines.length - 1) {
+          html += "<br>";
+        }
+      }
+    } else if (item.type === "input") {
+      // Render input slot with unique data-index attribute
+      const value = item.value || "";
+      const placeholder = item.placeholder || "Enter text here...";
+      html += `&#8203;<span class="input-slot ${item.mode === "textarea" ? "multiline" : ""}" data-placeholder="${placeholder}" data-index="${inputIndex}" contenteditable="true">${value}</span>&#8203;`;
+      inputIndex++;
+    }
+  }
+
+  renderedContent.value = html;
+}
+
+// Function to generate markdown from parsedModel
+function generateMarkdown(model) {
+  return model.map(item => {
+    if (typeof item === "string") {
+      return item;
+    } else if (item.type === "input") {
+      const attrs = [];
+      if (item.placeholder) attrs.push(`placeholder="${item.placeholder}"`);
+      if (item.mode && item.mode !== "input") attrs.push(`mode="${item.mode}"`);
+      if (item.value) attrs.push(`value="${item.value}"`);
+
+      return `{#InputSlot ${attrs.join(" ")}#}{#/InputSlot}`;
+    }
+    return "";
+  }).join("");
+}
+
+// Function to generate plain text for LLM consumption
+function generatePlainText(model) {
+  return model.map(item => {
+    if (typeof item === "string") {
+      return item;
+    } else if (item.type === "input") {
+      return item.value || "";
+    }
+    return "";
+  }).join("");
+}
+
+// Watch for value changes and update the model
 watch(
   () => props.value,
   (newValue) => {
     console.log("value change...");
-    if (editorRef.value) {
-      editorRef.value.innerHTML = cm_render(newValue.trim());
-    }
-  }
+    parsedModel.value = parseToModel(newValue);
+    renderInitial();
+  },
+  { immediate: true }
 );
 
-function cm_render(custom_markdown) {
-  // Replace InputSlot tags with editable div elements
-  let rendered = custom_markdown.replace(
-    /\{#InputSlot\s+([^#]*?)#\}\{#\/InputSlot#\}/g,
-    (match, attributes) => {
-      // Parse attributes
-      const attrs = {};
-      const attrRegex = /(\w+)="([^"]*)"/g;
-      let attrMatch;
+onMounted(() => {
+  // Initialize with the prop value
+  parsedModel.value = parseToModel(props.value);
+  renderInitial();
+});
 
-      while ((attrMatch = attrRegex.exec(attributes)) !== null) {
-        attrs[attrMatch[1]] = attrMatch[2];
+// Initial render function
+function renderInitial() {
+  if (!contentRef.value) return;
+
+  let html = "";
+  let inputIndex = 0;
+
+  for (const item of parsedModel.value) {
+    if (typeof item === "string") {
+      // Process markdown in text
+      let processed = item.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+      const lines = processed.split("\n");
+
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        if (line.match(/^##\s+/)) {
+          html += line.replace(/^##\s+(.+)$/, '<span class="header-two">## $1</span>') + "<br>";
+        } else if (line.match(/^#\s+/) && !line.match(/^##/)) {
+          html += line.replace(/^#\s+(.+)$/, '<span class="header-one"># $1</span>') + "<br>";
+        } else if (line) {
+          html += line + "<br>";
+        }
+        if (i < lines.length - 1) {
+          html += "<br>";
+        }
       }
-
-      const placeholder = attrs.placeholder || "Enter text here...";
-      const mode = attrs.mode || "input";
-
-      // Add zero-width spaces before and after input slot to allow cursor positioning
-      return `&#8203;<span class="input-slot ${
-        mode === "textarea" ? "multiline" : ""
-      }" data-placeholder="${placeholder}"></span>&#8203;`;
+    } else if (item.type === "input") {
+      // Render input slot with unique data-index attribute
+      const value = item.value || "";
+      const placeholder = item.placeholder || "Enter text here...";
+      html += `&#8203;<span class="input-slot ${item.mode === "textarea" ? "multiline" : ""}" data-placeholder="${placeholder}" data-index="${inputIndex}" contenteditable="true">${value}</span>&#8203;`;
+      inputIndex++;
     }
-  );
+  }
 
-  // Normalize line endings - handle both \r\n (Windows) and \n (Unix/Mac)
-  rendered = rendered.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
-
-  // Process line by line to handle headers correctly
-  const lines = rendered.split("\n");
-  const processedLines = lines.map((line) => {
-    // Check for ## headers first
-    if (line.match(/^##\s+/)) {
-      return line.replace(
-        /^##\s+(.+)$/,
-        '<span class="header-two">## $1</span>'
-      );
-    }
-    // Check for single # headers (not ##)
-    else if (line.match(/^#\s+/) && !line.match(/^##/)) {
-      return line.replace(/^#\s+(.+)$/, '<span class="header-one"># $1</span>');
-    }
-    return line;
-  });
-
-  // Join with <br> tags
-  rendered = processedLines.join("<br>");
-
-  return rendered;
+  // Set the innerHTML directly (not reactive)
+  contentRef.value.innerHTML = html;
 }
 
+// Handle input changes when users type in input slots
 function handleInput(event) {
-  // Handle input changes if needed
-  console.log("Content changed:", event.target.innerHTML);
+  const target = event.target;
+
+  // Check if the input is inside an input-slot
+  if (target.classList.contains("input-slot")) {
+    const index = parseInt(target.getAttribute('data-index'));
+    if (index >= 0 && index < parsedModel.value.length && parsedModel.value[index].type === "input") {
+      // Update the model with the new value
+      parsedModel.value[index].value = target.innerText;
+
+      // Emit the updated template and plain text WITHOUT re-rendering
+      emit("update", {
+        template: generateMarkdown(parsedModel.value),
+        content: generatePlainText(parsedModel.value)
+      });
+    }
+  }
 }
 
 function handleKeydown(event) {
@@ -100,14 +222,16 @@ function handleKeydown(event) {
     // Check if cursor is inside an input-slot
     let inputSlot = null;
     if (focusNode) {
-      // Check if the focusNode itself is an input-slot or a child of one
       let node =
         focusNode.nodeType === Node.TEXT_NODE
           ? focusNode.parentElement
           : focusNode;
-      while (node && node !== editorRef.value) {
+      while (node) {
         if (node.classList && node.classList.contains("input-slot")) {
           inputSlot = node;
+          break;
+        }
+        if (node.classList && node.classList.contains("demo-container")) {
           break;
         }
         node = node.parentElement;
@@ -126,6 +250,7 @@ function handleKeydown(event) {
       const newInputSlot = document.createElement("span");
       newInputSlot.className = `input-slot ${isMultiline ? "multiline" : ""}`;
       newInputSlot.setAttribute("data-placeholder", placeholder);
+      newInputSlot.setAttribute("contenteditable", "true");
 
       // Create a br element for line break
       const br = document.createElement("br");
@@ -137,7 +262,6 @@ function handleKeydown(event) {
         afterSpace.nodeType === Node.TEXT_NODE &&
         afterSpace.textContent === "\u200B"
       ) {
-        // Insert after the zero-width space
         afterSpace.parentNode.insertBefore(br, afterSpace.nextSibling);
         br.parentNode.insertBefore(
           document.createTextNode("\u200B"),
