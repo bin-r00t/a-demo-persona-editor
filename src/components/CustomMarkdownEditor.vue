@@ -20,7 +20,7 @@ const props = defineProps({
   },
 });
 
-const emit = defineEmits(["paste"]);
+const emit = defineEmits(["paste", "update"]);
 
 const editorRef = ref(null);
 const renderedContent = computed(() => cm_render(props.value));

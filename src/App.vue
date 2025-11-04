@@ -1,40 +1,17 @@
 <template>
   <div class="app">
-    <nav>
-      <ul>
-        <li>
-          <button
-            :class="[show === 'ori' ? 'active' : '']"
-            @click="show = 'ori'"
-          >
-            原版
-          </button>
-        </li>
-        <li>
-          <button
-            :class="[show === 'demo' ? 'active' : '']"
-            @click="show = 'demo'"
-          >
-            demo
-          </button>
-        </li>
-      </ul>
-    </nav>
-    <MessageInput v-if="show === 'ori'" />
-    <div class="editor-wrapper" v-if="show === 'demo'">
-      <!-- copy button  -->
+    <div class="editor-wrapper">
       <button @click="copyToClipboard">Copy</button>
-      <CustomMarkdownEditor :key="editorKey" ref="editorRef" :value="currentPayload" @paste="handlePaste" />
+      <CustomMarkdownEditor :key="editorKey" ref="editorRef" :value="currentPayload" @paste="handlePaste"
+        @update="handleUpdate" />
     </div>
   </div>
 </template>
 
 <script setup>
 import { ref } from "vue";
-import MessageInput from "./components/MessageInput.vue";
 import CustomMarkdownEditor from "./components/CustomMarkdownEditor.vue";
 
-const show = ref("ori");
 const editorRef = ref(null);
 const editorKey = ref(0);
 
@@ -74,6 +51,15 @@ const handlePaste = (pastedContent) => {
   // Replace the current payload with the pasted content and force re-render
   currentPayload.value = pastedContent;
   editorKey.value++;
+};
+
+const updatedContent = ref({
+  template: '', // save modified template to database (no need to implement)
+  content: '', // for llm consuming (no need to implement)
+});
+const handleUpdate = (updatedContent) => {
+  updatedContent.value.template = updatedContent.template;
+  updatedContent.value.content = updatedContent.content;
 };
 </script>
 
