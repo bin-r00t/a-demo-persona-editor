@@ -1,4 +1,5 @@
-import { InputSlotLine } from "./InputSlot";
+import { InputSlot, InputSlotLine } from "./InputSlot";
+import { TemplateRow } from "./TemplateRow";
 
 export interface ModalItem {
   type: "input-slot";
@@ -7,6 +8,7 @@ export interface ModalItem {
   mode: "singleline" | "textarea";
   placeholder: string;
 }
+
 
 export class LLMTemplate {
   el: HTMLElement;
@@ -28,10 +30,11 @@ export class LLMTemplate {
   }
 
   parseTemplateString() {
-    console.log("[Template] ", this.templateString);
+    // console.log("[Template] ", this.templateString);
     const templateArr = this.templateString.split("\n");
     templateArr.forEach((line) => {
-      console.log("[Template Line] ", line);
+      // const _a = new TemplateRow(line);
+      // console.log("[Template Line] ", line, _a);
       this.parseTemplateLine(line);
     });
   }
@@ -51,14 +54,17 @@ export class LLMTemplate {
       spanEl.classList.add("markdown-header");
       spanEl.innerHTML = this.parseLineContent(line);
       divEl.appendChild(spanEl);
-      console.log("[Extracted Text]", spanEl.innerText);
+      // console.log("[Extracted Text]", spanEl.innerText);
     } else if (this.containsInputSlot(line)) {
-      const inputSlotsLineTemplate = this.parseLineContent(line);
       console.log("[Extracted Input Slots]");
-      divEl.innerHTML = inputSlotsLineTemplate; 
+      const row = new TemplateRow(line);
+      console.log("[Row]", row);
+      // const inputSlotsLineTemplate = this.parseLineContent(line);
+      // // todo:clone template content to divEl
+      // divEl.innerHTML = inputSlotsLineTemplate; 
     } else {
       divEl.appendChild(document.createTextNode(this.parseLineContent(line)));
-      console.log("[Extracted Text]", line);
+      // console.log("[Extracted Text]", line);
     }
 
     this.el.appendChild(divEl);
@@ -82,9 +88,10 @@ export class LLMTemplate {
      *    <span class="input-slot" data-placeholder="世界" contenteditable="true"></span>
      *  </template>
      */
-    const inputSlotLineTemplate = new InputSlotLine(line);
-    
-    return inputSlotLineTemplate.toHTML();
+    // const inputSlotLine = new InputSlotLine(line);
+    // return inputSlotLine.toHTML() || '';
+    const tmplRow = new TemplateRow(line);
+    return tmplRow.getHTML().innerHTML
   }
 
   parseInputSlots(line: string): string[] {

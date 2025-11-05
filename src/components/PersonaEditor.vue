@@ -12,7 +12,8 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from "vue";
 import { LLMTemplate } from "../../utils/LLMTemplate";
-import '../../utils/styles.css'
+// import { TemplateRow } from "../../utils/TemplateRow";
+import "../../utils/styles.css";
 
 const props = defineProps<{
   templateRaw: string;
@@ -26,12 +27,13 @@ onMounted(() => {
     return;
   }
   template.value = new LLMTemplate(editorRef.value, props.templateRaw);
+  // console.log('[TemplateRow]', new TemplateRow(props.templateRaw))
 });
 
 const editorRef = ref<HTMLDivElement | null>(null);
 
 const handleInput = (e: InputEvent) => {
-  console.log("Input event:", e.target);
+  console.log("Input event:", e, e.target, e.currentTarget);
 };
 const handlePaste = (e: ClipboardEvent) => {
   //   console.log("Paste event:", e.clipboardData.getData("text/plain"));
