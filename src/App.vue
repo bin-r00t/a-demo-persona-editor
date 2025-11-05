@@ -8,13 +8,15 @@
         :template-raw="currentPayload"
         @update="handleUpdate"
         @paste="handlePaste"
+        @save-llm="handleSaveLLM"
+        @save-db="handleSaveDB"
       />
     </div>
     <div class="status">
-      <p><strong>Latest Template:</strong></p>
-      <pre>{{ latestState.template }}</pre>
-      <p><strong>Latest Plain Text Content:</strong></p>
-      <pre>{{ latestState.content }}</pre>
+      <p><strong>数据库保存:</strong></p>
+      <pre>{{ displayedContent.template }}</pre>
+      <p><strong>大模型使用:</strong></p>
+      <pre>{{ displayedContent.content }}</pre>
     </div>
   </div>
 </template>
@@ -46,6 +48,20 @@ const handleUpdate = (updatedContent) => {
   latestState.value.template = updatedContent.template;
   latestState.value.content = updatedContent.content;
 };
+
+const displayedContent = ref({
+  template: "", // save modified template to database (no need to implement)
+  content: "", // for llm consuming (no need to implement)
+});
+const handleSaveLLM = (v) => {
+  // Implement save to LLM logic here
+  displayedContent.value.content = v;
+};
+
+const handleSaveDB = (v) => {
+  // Implement save to database logic here
+  displayedContent.value.template = v;
+};
 </script>
 
 <style>
@@ -74,6 +90,7 @@ body {
 }
 
 .status {
+  flex: 1;
   background: white;
   padding: 16px;
   border-radius: 8px;

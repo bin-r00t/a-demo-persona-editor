@@ -1,9 +1,14 @@
 <template>
+  <div style="display: flex; gap: 20px; padding: 20px">
+    <button @click="toLLM">给大模型</button>
+    <button @click="toDB">保存模板</button>
+    <button @click="loadFromDB">加载模板</button>
+  </div>
   <div
     class="demo-container"
     ref="editorRef"
     contenteditable="true"
-    @input="handleInput"
+    @input="(e: Event) => handleInput(e)"
     @paste="handlePaste"
     @keydown="handleKeydown"
   ></div>
@@ -12,7 +17,6 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from "vue";
 import { LLMTemplate } from "../../utils/LLMTemplate";
-// import { TemplateRow } from "../../utils/TemplateRow";
 import "../../utils/styles.css";
 import { InputSlot, InputSlotElement } from "../../utils/InputSlotV2";
 import { HTMLElementWithTemplateRowAST } from "../../utils/TemplateRow";
@@ -21,6 +25,10 @@ const props = defineProps<{
   templateRaw: string;
 }>();
 
+const emits = defineEmits<{
+  "save-llm": [string];
+  "save-db": [string];
+}>();
 const template = ref<LLMTemplate | null>(null);
 
 onMounted(() => {
@@ -34,7 +42,7 @@ onMounted(() => {
 
 const editorRef = ref<HTMLDivElement | null>(null);
 
-const handleInput = (e: InputEvent) => {
+const handleInput = (_e: Event) => {
   const selection = window.getSelection();
   if (!selection || selection.rangeCount === 0) return;
 
@@ -72,6 +80,7 @@ const handleInput = (e: InputEvent) => {
         slotElement._s_rel.updateContent(inputSlot.textContent || "");
       }
     } else {
+      console.log("active element...", activeElement);
       /** cm-line element */
       let el = activeElement as unknown as HTMLElementWithTemplateRowAST;
       console.log(
@@ -79,7 +88,7 @@ const handleInput = (e: InputEvent) => {
         el,
         el._s_rel,
       );
-      el._s_rel!.update();
+      el._s_rel?.update();
     }
   }
 };
@@ -177,9 +186,33 @@ const handleKeydown = (event: KeyboardEvent) => {
       range.collapse(true);
       selection.removeAllRanges();
       selection.addRange(range);
+    } else {
+      // to be implemented: handle Enter key outside input-slot
+      console.log("[to be implemented] ===> ", focusNode);
     }
   }
 };
+
+function toLLM() {
+  if (editorRef.value) {
+    emits("save-llm", editorRef.value.innerText);
+  } else {
+    alert("Template not ready yet");
+  }
+}
+
+function toDB() {
+  if (template.value) {
+    const llmContent = template.value.getTextForLLM();
+    emits("save-db", llmContent);
+  } else {
+    alert("Template not ready yet");
+  }
+}
+
+function loadFromDB() {
+  alert("Load from DB - to be implemented");
+}
 </script>
 
 <style>
