@@ -15,14 +15,14 @@ function insertZeroEmptyBeforeAndAfter(el: HTMLElement) {
 
 export class InputSlot {
   _parent_div = document.createDocumentFragment();
-  el: InputSlotElement | null;
+  el: InputSlotElement;
   content: string;
   attributes: { [key: string]: string };
 
-  constructor(content: string, attributes?: { [key: string]: string }) {
+  constructor(content: string, attributes?: { [key: string]: string }, node?: InputSlotElement) {
     this.content = content;
     this.attributes = attributes || {};
-    this.el = document.createElement("span") as InputSlotElement;
+    this.el = node || document.createElement("span") as InputSlotElement;
     this.el.classList.add("input-slot");
     this.el.contentEditable = "true";
     this.el._s_rel = this;
@@ -51,6 +51,7 @@ export class InputSlot {
   }
 
   updateContent(newContent: string) {
+    console.log("[InputSlot] updateContent:", newContent);
     this.content = newContent;
   }
 
@@ -71,4 +72,5 @@ export class InputSlot {
     if (!this.el) return;
     parent.appendChild(this._parent_div);
   }
+
 }

@@ -15,6 +15,7 @@ import { LLMTemplate } from "../../utils/LLMTemplate";
 // import { TemplateRow } from "../../utils/TemplateRow";
 import "../../utils/styles.css";
 import { InputSlot, InputSlotElement } from "../../utils/InputSlotV2";
+import { HTMLElementWithTemplateRowAST } from "../../utils/TemplateRow";
 
 const props = defineProps<{
   templateRaw: string;
@@ -46,13 +47,18 @@ const handleInput = (e: InputEvent) => {
       ? focusNode.parentElement
       : (focusNode as HTMLElement);
 
-  // console.log("Actually typing in:", activeElement);
+  console.log("Actually typing in:", activeElement);
   // Check if typing in an input-slot
   if (activeElement?.classList?.contains("input-slot")) {
-    // console.log("Typing directly in input-slot 1:", activeElement);
-    (activeElement as unknown as InputSlotElement)._s_rel!.updateContent(
-      activeElement.textContent || "",
-    );
+    if ((activeElement as unknown as InputSlotElement)._s_rel) {
+      // console.log("Typing directly in input-slot 1:", activeElement);
+      (activeElement as unknown as InputSlotElement)._s_rel!.updateContent(
+        activeElement.textContent || "",
+      );
+    } else {
+      // 这个分支应该永远不会进入
+      console.log("新创建的 input slot ");
+    }
   } else {
     // Find the closest input-slot ancestor
     const inputSlot = activeElement?.closest(".input-slot");
@@ -66,11 +72,14 @@ const handleInput = (e: InputEvent) => {
         slotElement._s_rel.updateContent(inputSlot.textContent || "");
       }
     } else {
-      /** cm-line element or .demo-container itself */
+      /** cm-line element */
+      let el = activeElement as unknown as HTMLElementWithTemplateRowAST;
       console.log(
         "Typing in demo-container itself or other element:",
-        activeElement,
+        el,
+        el._s_rel,
       );
+      el._s_rel!.update();
     }
   }
 };
@@ -116,9 +125,17 @@ const handleKeydown = (event: KeyboardEvent) => {
         inputSlot.getAttribute("data-placeholder") || "Enter text here...";
 
       // Create a new input slot element
-      const newInputSlot = document.createElement("span");
-      newInputSlot.className = `input-slot`;
-      newInputSlot.setAttribute("data-placeholder", placeholder);
+      const newInputSlot2 = new InputSlot("", {
+        placeholder,
+      });
+
+      // Put the new input slot inside its parent's templateRow AST
+      (
+        inputSlot.parentElement as unknown as HTMLElementWithTemplateRowAST
+      )._s_rel!.appendNewInputSlot(
+        newInputSlot2,
+        inputSlot as InputSlotElement,
+      );
 
       // Create a br element for line break
       const br = document.createElement("br");
@@ -136,10 +153,10 @@ const handleKeydown = (event: KeyboardEvent) => {
           document.createTextNode("\u200B"),
           br.nextSibling,
         );
-        br.parentNode?.insertBefore(newInputSlot, br.nextSibling);
+        br.parentNode?.insertBefore(newInputSlot2.el, br.nextSibling);
         br.parentNode?.insertBefore(
           document.createTextNode("\u200B"),
-          newInputSlot.nextSibling,
+          newInputSlot2.el.nextSibling,
         );
       } else {
         inputSlot.parentNode?.insertBefore(br, inputSlot.nextSibling);
@@ -147,16 +164,16 @@ const handleKeydown = (event: KeyboardEvent) => {
           document.createTextNode("\u200B"),
           br.nextSibling,
         );
-        br.parentNode?.insertBefore(newInputSlot, br.nextSibling);
+        br.parentNode?.insertBefore(newInputSlot2.el, br.nextSibling);
         br.parentNode?.insertBefore(
           document.createTextNode("\u200B"),
-          newInputSlot.nextSibling,
+          newInputSlot2.el.nextSibling,
         );
       }
 
       // Move cursor to the new input slot
       const range = document.createRange();
-      range.setStart(newInputSlot, 0);
+      range.setStart(newInputSlot2.el, 0);
       range.collapse(true);
       selection.removeAllRanges();
       selection.addRange(range);

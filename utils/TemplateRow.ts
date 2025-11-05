@@ -7,7 +7,7 @@
  *    <span class="input-slot" data-placeholder="世界" contenteditable="true"></span>
  *  </template>
  */
-import { InputSlot } from "./InputSlotV2";
+import { InputSlot, InputSlotElement } from "./InputSlotV2";
 
 type TextNode = {
   type: "text";
@@ -26,7 +26,7 @@ interface TemplateRowAST {
   content: (TextNode | InputSlotNode)[];
 }
 
-interface HTMLElementWithTemplateRowAST extends HTMLElement {
+export interface HTMLElementWithTemplateRowAST extends HTMLElement {
   _s_rel?: TemplateRow;
 }
 
@@ -168,7 +168,82 @@ export class TemplateRow {
   }
 
   getText(): string {
+    let result = "";
     console.log("getText", this.ast);
-    return "";
+    this.ast.content.forEach((node) => {
+      if (node.type === "text") {
+        result += node.content;
+      } else if (node.type === "input-slot") {
+        result += node.inputSlot.getText();
+      }
+    });
+    return result;
+  }
+
+  update() {
+    const newContent: (TextNode | InputSlotNode)[] = [];
+    /** update content based on the latest DOM */
+    this.el.childNodes.forEach((node) => {
+      console.log("updating node:", node);
+      if (node.nodeType === Node.TEXT_NODE) {
+        newContent.push({ type: "text", content: node.textContent || "" });
+      } else if (
+        node.nodeName === "SPAN" &&
+        (node as HTMLElement).classList.contains("input-slot")
+      ) {
+        /** get the original InputSlot */
+        const inputSlot = (node as unknown as InputSlotElement)._s_rel;
+        const placeholder =
+          (node as HTMLElement).getAttribute("data-placeholder") || "";
+        const content = node.textContent || "";
+        if (inputSlot) {
+          newContent.push({
+            type: "input-slot",
+            attributes: {
+              placeholder,
+            },
+            content,
+            inputSlot,
+          });
+        } else {
+          // 实际上，这个分支也永远不会进入...
+          // inputSlot is undefined, should create a new one and insert.
+          const newInputSlot = new InputSlot(
+            content,
+            {
+              placeholder,
+            },
+            node as InputSlotElement,
+          );
+          newContent.push({
+            type: "input-slot",
+            attributes: {
+              placeholder,
+            },
+            content,
+            inputSlot: newInputSlot,
+          });
+        }
+      }
+    });
+    this.ast.content = newContent;
+  }
+
+  appendNewInputSlot(inputSlot: InputSlot, after: InputSlotElement) {
+    const newContent: (TextNode | InputSlotNode)[] = [...this.ast.content];
+    this.ast.content.forEach((node, index) => {
+      if (node.type === "text") return;
+      else if (node.inputSlot === after._s_rel) {
+        newContent.splice(index + 1, 0, {
+          type: "input-slot",
+          attributes: {
+            placeholder: inputSlot.el.getAttribute("data-placeholder") || "",
+          },
+          content: inputSlot.content,
+          inputSlot,
+        });
+      }
+    });
+    this.ast.content = newContent;
   }
 }
