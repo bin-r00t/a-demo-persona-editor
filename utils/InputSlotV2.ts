@@ -1,4 +1,4 @@
-interface InputSlotElement extends HTMLSpanElement {
+export interface InputSlotElement extends HTMLSpanElement {
   _s_rel?: InputSlot;
 }
 

@@ -1,22 +1,18 @@
-import { InputSlot, InputSlotLine } from "./InputSlot";
 import { TemplateRow } from "./TemplateRow";
 
-export interface ModalItem {
-  type: "input-slot";
-  id: string;
-  value: string;
-  mode: "singleline" | "textarea";
-  placeholder: string;
+export interface LLMTemplateElement extends HTMLElement {
+  _s_rel?: LLMTemplate;
 }
 
-
 export class LLMTemplate {
-  el: HTMLElement;
+  el: LLMTemplateElement;
   templateString: string;
+  content: (string | TemplateRow)[] = [];
   supportedRegex: { [key: string]: RegExp };
 
   constructor(el: HTMLElement, templateString: string) {
     this.el = el;
+    this.el._s_rel = this;
     this.templateString = templateString;
     this.supportedRegex = {
       "#": new RegExp("^# (.*?)$", "gm"), // header one
@@ -33,41 +29,10 @@ export class LLMTemplate {
     // console.log("[Template] ", this.templateString);
     const templateArr = this.templateString.split("\n");
     templateArr.forEach((line) => {
-      // const _a = new TemplateRow(line);
-      // console.log("[Template Line] ", line, _a);
-      this.parseTemplateLine(line);
+      const _line = new TemplateRow(line);
+      this.content.push(_line);
+      this.el.appendChild(_line.getHTML());
     });
-  }
-
-  parseTemplateLine(line: string) {
-    const divEl = document.createElement("div");
-    divEl.classList.add("cm-line");
-    line = line.trim();
-
-    /** if line contains # or ## or ###, wrap it with a markdown-header class span */
-    if (
-      line.startsWith("# ") ||
-      line.startsWith("## ") ||
-      line.startsWith("### ")
-    ) {
-      const spanEl = document.createElement("span");
-      spanEl.classList.add("markdown-header");
-      spanEl.innerHTML = this.parseLineContent(line);
-      divEl.appendChild(spanEl);
-      // console.log("[Extracted Text]", spanEl.innerText);
-    } else if (this.containsInputSlot(line)) {
-      console.log("[Extracted Input Slots]");
-      const row = new TemplateRow(line);
-      console.log("[Row]", row);
-      // const inputSlotsLineTemplate = this.parseLineContent(line);
-      // // todo:clone template content to divEl
-      // divEl.innerHTML = inputSlotsLineTemplate; 
-    } else {
-      divEl.appendChild(document.createTextNode(this.parseLineContent(line)));
-      // console.log("[Extracted Text]", line);
-    }
-
-    this.el.appendChild(divEl);
   }
 
   containsInputSlot(line: string): boolean {
@@ -75,38 +40,15 @@ export class LLMTemplate {
     return reg.test(line);
   }
 
-  parseLineContent(line: string): string {
-    if (!this.containsInputSlot(line)) {
-      return line;
-    }
-    /**
-     * parse "abc {#InputSlot mode="input"#}你好{/#InputSlot#}{#InputSlot placeholder="世界" mode="input"#}{/#InputSlot#}"
-     * to:
-     *  <template>
-     *    "abc"
-     *    <span class="input-slot" data-placeholder="Type here..." contenteditable="true">你好</span>
-     *    <span class="input-slot" data-placeholder="世界" contenteditable="true"></span>
-     *  </template>
-     */
-    // const inputSlotLine = new InputSlotLine(line);
-    // return inputSlotLine.toHTML() || '';
-    const tmplRow = new TemplateRow(line);
-    return tmplRow.getHTML().innerHTML
-  }
-
-  parseInputSlots(line: string): string[] {
-    return [];
-  }
-
-  parseToModel(markdown: string): (ModalItem | string)[] {
-    return [];
-  }
-
-  parseFromModel(model: (ModalItem | string)[]): string {
-    return "";
-  }
-
   getTextForLLM() {
-    return this.el.innerText;
+    let result = "";
+    this.content.forEach((item) => {
+      if (typeof item === "string") {
+        result += item + "\n";
+      } else if (item instanceof TemplateRow) {
+        result += item.getText() + "\n";
+      }
+    });
+    return result.trim();
   }
 }

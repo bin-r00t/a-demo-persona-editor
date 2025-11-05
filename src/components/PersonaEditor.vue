@@ -14,6 +14,7 @@ import { ref, reactive, onMounted } from "vue";
 import { LLMTemplate } from "../../utils/LLMTemplate";
 // import { TemplateRow } from "../../utils/TemplateRow";
 import "../../utils/styles.css";
+import { InputSlot, InputSlotElement } from "../../utils/InputSlotV2";
 
 const props = defineProps<{
   templateRaw: string;
@@ -33,8 +34,47 @@ onMounted(() => {
 const editorRef = ref<HTMLDivElement | null>(null);
 
 const handleInput = (e: InputEvent) => {
-  console.log("Input event:", e, e.target, e.currentTarget);
+  const selection = window.getSelection();
+  if (!selection || selection.rangeCount === 0) return;
+
+  // Get the node where the cursor is
+  const focusNode = selection.focusNode;
+
+  // If it's a text node, get its parent element
+  let activeElement =
+    focusNode?.nodeType === Node.TEXT_NODE
+      ? focusNode.parentElement
+      : (focusNode as HTMLElement);
+
+  // console.log("Actually typing in:", activeElement);
+  // Check if typing in an input-slot
+  if (activeElement?.classList?.contains("input-slot")) {
+    // console.log("Typing directly in input-slot 1:", activeElement);
+    (activeElement as unknown as InputSlotElement)._s_rel!.updateContent(
+      activeElement.textContent || "",
+    );
+  } else {
+    // Find the closest input-slot ancestor
+    const inputSlot = activeElement?.closest(".input-slot");
+    if (inputSlot) {
+      // wouldn't fire when typing in input-slot directly
+      console.log("Typing inside input-slot 2:", inputSlot);
+      // Access the InputSlot instance
+      const slotElement = inputSlot as any;
+      if (slotElement._s_rel) {
+        console.log("InputSlot instance:", slotElement._s_rel);
+        slotElement._s_rel.updateContent(inputSlot.textContent || "");
+      }
+    } else {
+      /** cm-line element or .demo-container itself */
+      console.log(
+        "Typing in demo-container itself or other element:",
+        activeElement,
+      );
+    }
+  }
 };
+
 const handlePaste = (e: ClipboardEvent) => {
   //   console.log("Paste event:", e.clipboardData.getData("text/plain"));
 };

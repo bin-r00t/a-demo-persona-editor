@@ -1,3 +1,12 @@
+/**
+ * parse "abc {#InputSlot mode="input"#}你好{/#InputSlot#}{#InputSlot placeholder="世界" mode="input"#}{/#InputSlot#}"
+ * to:
+ *  <template>
+ *    "abc"
+ *    <span class="input-slot" data-placeholder="Type here..." contenteditable="true">你好</span>
+ *    <span class="input-slot" data-placeholder="世界" contenteditable="true"></span>
+ *  </template>
+ */
 import { InputSlot } from "./InputSlotV2";
 
 type TextNode = {
@@ -25,7 +34,7 @@ export class TemplateRow {
   rawString: string;
   ast: TemplateRowAST;
   parsedSlots: InputSlot[];
-  el: HTMLElementWithTemplateRowAST | null;
+  el: HTMLElementWithTemplateRowAST;
 
   constructor(rawString: string) {
     this.rawString = rawString;
@@ -45,10 +54,6 @@ export class TemplateRow {
   //       this.parsedSlots.push(inputSlot);
   //     }
   //   }
-
-  private astToTemplate(): string {
-    return "";
-  }
 
   private templateToAST(rawString: string): TemplateRowAST {
     /** the rawString looks like this: abc {#InputSlot mode="input" placeholder="asdf"#} content {/#InputSlot#} dfe*/
@@ -111,7 +116,6 @@ export class TemplateRow {
   }
 
   parseAttributes(attributeString: string): { [key: string]: string } {
-    // console.log("attirbuteString:", attributeString);
     const attributes: { [key: string]: string } = {};
     const attrRegex = /(\w+)=\"(.*?)\"/g;
     let match;
@@ -128,26 +132,43 @@ export class TemplateRow {
   getHTML() {
     /** generate HTML from this.ast */
     const content = this.ast.content;
-    const _div = document.createElement("div");
-    content.forEach((node) => {
-      if (node.type === "text") {
-        _div.appendChild(document.createTextNode(node.content));
-      } else if (node.type === "input-slot") {
-        console.log("[Input Slot Node]", node);
-        const inputSlot = node.inputSlot; 
-        inputSlot.handOverDom(_div);
-        // _div.appendChild(inputSlot.el!);
-        // const inputSlot = new InputSlot(
-        //   `{#InputSlot ${Object.entries(node.attributes)
-        //     .map(([k, v]) => `${k}="${v}"`)
-        //     .join(" ")}#}${node.content}{/#InputSlot#}`,
-        // );
-        // const slotFragment = inputSlot.toFragment();
-        // if (slotFragment) {
-        //   _div.appendChild(slotFragment);
-        // }
-      }
-    });
-    return _div;
+    this.el.classList.add("cm-line");
+    /** span - markdown header (if had) */
+    let span = document.createElement("span");
+    span.classList.add("markdown-header");
+
+    if (
+      this.rawString.trim().startsWith("# ") ||
+      this.rawString.trim().startsWith("## ") ||
+      this.rawString.trim().startsWith("### ")
+    ) {
+      content.forEach((node) => {
+        if (node.type === "text") {
+          span.appendChild(document.createTextNode(node.content));
+        } else if (node.type === "input-slot") {
+          console.log("[Input Slot Node]", node);
+          const inputSlot = node.inputSlot;
+          inputSlot.handOverDom(span);
+        }
+      });
+      this.el.appendChild(span);
+    } else {
+      content.forEach((node) => {
+        if (node.type === "text") {
+          this.el.appendChild(document.createTextNode(node.content));
+        } else if (node.type === "input-slot") {
+          console.log("[Input Slot Node]", node);
+          const inputSlot = node.inputSlot;
+          inputSlot.handOverDom(this.el);
+        }
+      });
+    }
+
+    return this.el;
+  }
+
+  getText(): string {
+    console.log("getText", this.ast);
+    return "";
   }
 }

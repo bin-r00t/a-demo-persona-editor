@@ -17,6 +17,10 @@ export const template = `# 角色：{#InputSlot placeholder="角色名称" mode=
 ## 输出格式：
 {#InputSlot placeholder="如果对角色的输出格式有特定要求，可以在这里强调并举例说明想要的输出格式" mode="input"#}{#/InputSlot#}
 
+abc
+def
+ghi
+
 ## 限制：
 - {#InputSlot placeholder="描述角色在互动过程中需要遵循的限制条件1" mode="input"#}{#/InputSlot#}
 - {#InputSlot placeholder="描述角色在互动过程中需要遵循的限制条件2" mode="input"#}{#/InputSlot#}
