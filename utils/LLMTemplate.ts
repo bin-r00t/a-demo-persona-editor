@@ -1,4 +1,4 @@
-import { InputSlot } from "./InputSlot";
+import { InputSlotLine } from "./InputSlot";
 
 export interface ModalItem {
   type: "input-slot";
@@ -53,12 +53,9 @@ export class LLMTemplate {
       divEl.appendChild(spanEl);
       console.log("[Extracted Text]", spanEl.innerText);
     } else if (this.containsInputSlot(line)) {
-      const extractedInputSlots = this.parseInputSlots(line);
+      const inputSlotsLineTemplate = this.parseLineContent(line);
       console.log("[Extracted Input Slots]");
-      // extractedInputSlots.forEach((match) => {
-      //   const inputSlot = new InputSlot(match);
-      //   divEl.appendChild(inputSlot.el);
-      // });
+      divEl.innerHTML = inputSlotsLineTemplate; 
     } else {
       divEl.appendChild(document.createTextNode(this.parseLineContent(line)));
       console.log("[Extracted Text]", line);
@@ -76,8 +73,18 @@ export class LLMTemplate {
     if (!this.containsInputSlot(line)) {
       return line;
     }
-    // parse input-slot
-    return "";
+    /**
+     * parse "abc {#InputSlot mode="input"#}你好{/#InputSlot#}{#InputSlot placeholder="世界" mode="input"#}{/#InputSlot#}"
+     * to:
+     *  <template>
+     *    "abc"
+     *    <span class="input-slot" data-placeholder="Type here..." contenteditable="true">你好</span>
+     *    <span class="input-slot" data-placeholder="世界" contenteditable="true"></span>
+     *  </template>
+     */
+    const inputSlotLineTemplate = new InputSlotLine(line);
+    
+    return inputSlotLineTemplate.toHTML();
   }
 
   parseInputSlots(line: string): string[] {
